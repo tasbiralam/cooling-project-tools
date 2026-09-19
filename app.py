@@ -18,17 +18,16 @@ with img_col2:
     if img_path_2.exists():
         st.image(str(img_path_2), caption="Fan design — view 2", use_container_width=True)
 
-st.subheader("🎯 Project Objective")
-st.write(
+st.subheader("Project Objective")
+st.markdown(
     "This project follows a **design → predict → verify** workflow:\n\n"
-    "1. **Design** — Modeled a 5-blade axial exhaust fan in CAD.\n"
-    "2. **Predict** — Calculated the expected airflow theoretically, using "
-    "basic fluid mechanics formulas (this app).\n"
-    "3. **Verify** — Ran a full CFD simulation (COMSOL Multiphysics) on the "
-    "actual CAD geometry to check whether the prediction holds up.\n\n"
-    "The goal was to show that the hand-calculated prediction and the CFD "
-    "result agree with each other, demonstrating both design and analytical "
-    "engineering skills — not just building a fan or running a simulation."
+    "- **Design** — Modeled a 5-blade axial exhaust fan in CAD.\n"
+    "- **Predict** — Estimated the expected airflow using standard fluid "
+    "mechanics formulas.\n"
+    "- **Verify** — Ran a CFD simulation (COMSOL Multiphysics) on the actual "
+    "CAD geometry and compared it against the prediction.\n\n"
+    "The result: the hand-calculated estimate and the CFD simulation agree "
+    "within a reasonable margin, validating both the design and the analysis."
 )
 
 st.header("Geometry (extracted from CAD)")
@@ -144,11 +143,11 @@ comparison_data = {
 }
 st.table(comparison_data)
 
-st.info(
-    f"The hand calculation and CFD result agree within **{percent_diff:.1f}%**. "
-    "The remaining difference is expected — the hand calculation uses a simplified "
-    "efficiency factor and assumes uniform flow, while the CFD result accounts for "
-    "the actual blade geometry, turbulence, and boundary layer effects."
+st.markdown(f"**Hand calculation and CFD agree within {percent_diff:.1f}%.** The remaining gap is expected:")
+st.markdown(
+    "- The hand calculation uses a simplified flow-efficiency factor\n"
+    "- It assumes uniform flow across the swept area\n"
+    "- The CFD result accounts for actual blade geometry, turbulence, and boundary layer effects"
 )
 
 # ---- CFD Contour Images ----
@@ -193,24 +192,25 @@ else:
         "file (same GitHub folder) to display the CFD result visuals here."
     )
 
-st.subheader("🔍 The Science Behind It")
+st.subheader("Interpreting the Results")
 
+st.markdown("**Velocity — highest at the blade tip**")
 st.markdown(
-    "**Why velocity is highest at the blade tip:**\n"
-    "Since v = ω × r, velocity scales directly with radius. The blade tip "
-    "(largest r) moves fastest, so it shows the highest velocity in the contour "
-    "plot. Near the hub (r ≈ 0) and outside the domain, velocity drops close to zero.\n\n"
-    "**Why pressure differs across each blade face:**\n"
-    "Each blade has a pressure side (the face pushing the air — higher pressure) "
-    "and a suction side (the trailing face pulling air along — lower pressure). "
-    "This pressure difference across the blade is what generates thrust/airflow, "
-    "the same principle as lift on an airplane wing."
+    "- Velocity scales directly with radius: v = ω × r\n"
+    "- The tip (largest r) moves fastest → highest velocity in the contour\n"
+    "- Near the hub (r ≈ 0) and outside the domain, velocity drops close to zero"
+)
+
+st.markdown("**Pressure — differs across each blade face**")
+st.markdown(
+    "- Pressure side (front face): pushes air → higher pressure\n"
+    "- Suction side (trailing face): pulls air along → lower pressure\n"
+    "- This pressure difference generates thrust — the same principle as lift on an airplane wing"
 )
 
 st.caption(
     "Note: the Inlet and Outlet boundaries were set to a fixed Pressure = 0 Pa "
-    "condition (open, atmospheric boundaries) — a modeling choice, not a "
-    "measured result. The domain-average pressure isn't a meaningful output; "
-    "the local pressure difference across each blade (shown above) is what "
-    "reflects the fan's actual aerodynamic loading."
+    "condition (a modeling choice, not a measured result), so domain-average "
+    "pressure isn't meaningful here. The local pressure difference across each "
+    "blade, shown above, is what reflects the fan's actual aerodynamic loading."
 )
