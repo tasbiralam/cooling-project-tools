@@ -80,3 +80,76 @@ st.caption(
     "Note: These are simplified theoretical estimates for benchmarking against "
     "CFD simulation results, not a replacement for full CFD analysis."
 )
+
+# ---- CFD Validation Section ----
+st.header("🔬 CFD Validation (COMSOL)")
+st.write(
+    "The theoretical estimate above was benchmarked against a full CFD simulation "
+    "(COMSOL Multiphysics, Turbulent Flow k-ε, Frozen Rotor approach) using the "
+    "actual CAD geometry."
+)
+
+cfd_col1, cfd_col2 = st.columns(2)
+
+with cfd_col1:
+    st.subheader("CFD Simulation Inputs")
+    cfd_inlet_flow = st.number_input(
+        "CFD flow rate — Inlet boundary (m³/s)",
+        value=0.038302, format="%.6f",
+        help="Surface integral of velocity (w-component) over the inlet boundary in COMSOL."
+    )
+    cfd_outlet_flow = st.number_input(
+        "CFD flow rate — Outlet boundary (m³/s)",
+        value=0.039027, format="%.6f",
+        help="Surface integral of velocity (w-component) over the outlet boundary in COMSOL."
+    )
+
+cfd_avg_flow = (abs(cfd_inlet_flow) + abs(cfd_outlet_flow)) / 2
+mass_conservation_error = abs(abs(cfd_inlet_flow) - abs(cfd_outlet_flow)) / cfd_avg_flow * 100
+percent_diff = abs(flow_rate - cfd_avg_flow) / flow_rate * 100
+
+with cfd_col2:
+    st.subheader("Validation Summary")
+    st.metric("Avg. CFD Flow Rate", f"{cfd_avg_flow:.5f} m³/s")
+    st.metric("Mass Conservation Check", f"{mass_conservation_error:.2f}% diff",
+              help="Difference between inlet and outlet flow rates — should be small (a few %).")
+    st.metric("Hand Calc vs CFD", f"{percent_diff:.1f}% diff",
+              help="Difference between the theoretical estimate above and the CFD result.")
+
+st.subheader("Comparison Table")
+comparison_data = {
+    "Method": ["Hand Calculation (theoretical)", "CFD — Inlet", "CFD — Outlet", "CFD — Average"],
+    "Flow Rate (m³/s)": [
+        f"{flow_rate:.5f}",
+        f"{abs(cfd_inlet_flow):.5f}",
+        f"{abs(cfd_outlet_flow):.5f}",
+        f"{cfd_avg_flow:.5f}",
+    ],
+}
+st.table(comparison_data)
+
+st.info(
+    f"The hand calculation and CFD result agree within **{percent_diff:.1f}%**. "
+    "The remaining difference is expected — the hand calculation uses a simplified "
+    "efficiency factor and assumes uniform flow, while the CFD result accounts for "
+    "the actual blade geometry, turbulence, and boundary layer effects."
+)
+
+# ---- CFD Contour Images (optional) ----
+velocity_img = Path(__file__).parent / "velocity_contour.png"
+pressure_img = Path(__file__).parent / "pressure_contour.png"
+
+if velocity_img.exists() or pressure_img.exists():
+    st.subheader("CFD Result Visuals")
+    vcol, pcol = st.columns(2)
+    if velocity_img.exists():
+        with vcol:
+            st.image(str(velocity_img), caption="Velocity magnitude (COMSOL)")
+    if pressure_img.exists():
+        with pcol:
+            st.image(str(pressure_img), caption="Pressure distribution (COMSOL)")
+else:
+    st.caption(
+        "Add `velocity_contour.png` and `pressure_contour.png` next to this app "
+        "file (same GitHub folder) to display the CFD result visuals here."
+    )
