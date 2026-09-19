@@ -152,83 +152,65 @@ st.info(
 )
 
 # ---- CFD Contour Images ----
+import base64
+
 velocity_img = Path(__file__).parent / "velocity_contour.png"
 pressure_img = Path(__file__).parent / "pressure_contour.png"
+
+def img_to_base64(path):
+    return base64.b64encode(path.read_bytes()).decode()
 
 if velocity_img.exists() or pressure_img.exists():
     st.subheader("CFD Result Visuals")
     vcol, pcol = st.columns(2)
+    fixed_height = 320
+    box_style = (
+        f"height:{fixed_height}px; display:flex; align-items:center; "
+        f"justify-content:center; border:1px solid #444; border-radius:6px; "
+        f"overflow:hidden; background:white;"
+    )
+    img_style = "max-height:100%; max-width:100%; object-fit:contain;"
+
     if velocity_img.exists():
         with vcol:
-            st.image(str(velocity_img), caption="Velocity magnitude (COMSOL)")
+            b64 = img_to_base64(velocity_img)
+            st.markdown(
+                f'<div style="{box_style}"><img src="data:image/png;base64,{b64}" style="{img_style}"></div>',
+                unsafe_allow_html=True,
+            )
+            st.caption("Velocity magnitude (COMSOL)")
     if pressure_img.exists():
         with pcol:
-            st.image(str(pressure_img), caption="Pressure distribution (COMSOL)")
+            b64 = img_to_base64(pressure_img)
+            st.markdown(
+                f'<div style="{box_style}"><img src="data:image/png;base64,{b64}" style="{img_style}"></div>',
+                unsafe_allow_html=True,
+            )
+            st.caption("Pressure distribution (COMSOL)")
 else:
     st.caption(
         "Add `velocity_contour.png` and `pressure_contour.png` next to this app "
         "file (same GitHub folder) to display the CFD result visuals here."
     )
 
-with st.expander("🔍 How to read the velocity and pressure contours"):
-    st.markdown(
-        "**Velocity — why it's high at the blade tip and low at the hub:**\n"
-        "Since v = ω × r, velocity scales directly with radius. The blade tip "
-        "(largest r) moves fastest, so it shows the highest velocity (red/yellow). "
-        "Near the hub (r ≈ 0) and far outside the domain, velocity drops close to zero.\n\n"
-        "**Pressure — why one side of each blade is high and the other is low:**\n"
-        "Each blade has a pressure side (the face pushing the air — shows higher "
-        "pressure) and a suction side (the trailing face pulling air along — shows "
-        "lower pressure). This pressure difference across the blade is exactly what "
-        "generates thrust/airflow, the same principle as lift on an airplane wing.\n\n"
-        "**Why the overall inlet/outlet pressure looks like ~0 Pa:**\n"
-        "Both the Inlet and Outlet boundaries were set to a fixed Pressure = 0 Pa "
-        "condition (open, atmospheric boundaries) — this was a modeling choice, not "
-        "a measured result. So the *domain-average* pressure difference isn't a "
-        "meaningful output here; the *local* pressure difference across each blade "
-        "(seen in the contour plot) is what reflects the fan's actual aerodynamic loading."
-    )
+st.subheader("🔍 The Science Behind It")
 
-# ---- Fan Efficiency (optional) ----
-st.header("⚙️ Fan Efficiency (Optional)")
-st.write(
-    "Because the inlet/outlet were modeled as fixed 0 Pa boundaries, static "
-    "pressure rise can't be used to estimate efficiency here. Instead, efficiency "
-    "is estimated by comparing the **kinetic energy given to the air** against the "
-    "**shaft power** needed to spin the fan (from the torque on the rotating wall)."
+st.markdown(
+    "**Why velocity is highest at the blade tip:**\n"
+    "Since v = ω × r, velocity scales directly with radius. The blade tip "
+    "(largest r) moves fastest, so it shows the highest velocity in the contour "
+    "plot. Near the hub (r ≈ 0) and outside the domain, velocity drops close to zero.\n\n"
+    "**Why pressure differs across each blade face:**\n"
+    "Each blade has a pressure side (the face pushing the air — higher pressure) "
+    "and a suction side (the trailing face pulling air along — lower pressure). "
+    "This pressure difference across the blade is what generates thrust/airflow, "
+    "the same principle as lift on an airplane wing."
 )
 
-eff_col1, eff_col2 = st.columns(2)
-
-with eff_col1:
-    torque = st.number_input(
-        "Torque on fan wall from CFD (N·m)",
-        value=0.0, format="%.6f",
-        help="Get this from COMSOL: Derived Values → Surface Integration → Moment, "
-             "evaluated on the rotating wall (fan surface)."
-    )
-
-if torque > 0:
-    exit_velocity = cfd_avg_flow / frontal_area
-    shaft_power = torque * omega
-    aero_power = 0.5 * air_density * cfd_avg_flow * exit_velocity ** 2
-    fan_efficiency = (aero_power / shaft_power) * 100 if shaft_power > 0 else 0
-
-    with eff_col2:
-        st.metric("Shaft Power", f"{shaft_power:.4f} W")
-        st.metric("Aerodynamic Power", f"{aero_power:.4f} W")
-        st.metric("Estimated Efficiency", f"{fan_efficiency:.1f}%")
-
-    with st.expander("See efficiency calculation details"):
-        st.latex(r"P_{shaft} = \tau \cdot \omega")
-        st.write(f"P_shaft = {torque:.6f} × {omega:.2f} = {shaft_power:.4f} W")
-        st.latex(r"v_{exit} = \frac{Q}{A}")
-        st.write(f"v_exit = {cfd_avg_flow:.5f} / {frontal_area:.5f} = {exit_velocity:.3f} m/s")
-        st.latex(r"P_{aero} = \tfrac{1}{2} \cdot \rho \cdot Q \cdot v_{exit}^2")
-        st.write(f"P_aero = 0.5 × {air_density} × {cfd_avg_flow:.5f} × {exit_velocity:.3f}² = {aero_power:.4f} W")
-        st.latex(r"\eta = \frac{P_{aero}}{P_{shaft}} \times 100")
-else:
-    st.caption(
-        "Enter the torque value from COMSOL above to see the efficiency estimate. "
-        "This step is optional — the project is already complete without it."
-    )
+st.caption(
+    "Note: the Inlet and Outlet boundaries were set to a fixed Pressure = 0 Pa "
+    "condition (open, atmospheric boundaries) — a modeling choice, not a "
+    "measured result. The domain-average pressure isn't a meaningful output; "
+    "the local pressure difference across each blade (shown above) is what "
+    "reflects the fan's actual aerodynamic loading."
+)
