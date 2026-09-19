@@ -5,15 +5,31 @@ from pathlib import Path
 st.set_page_config(page_title="Exhaust Fan Aerodynamics Calculator", page_icon="🌀", layout="centered")
 
 st.title("🌀 Exhaust Fan Aerodynamics Calculator")
-st.write(
-    "An aerodynamic performance estimator for a 5-blade exhaust fan, based on "
-    "real dimensions extracted from my CAD model. Built as part of a CAD + "
-    "CFD design project."
-)
 
-img_path = Path(__file__).parent / "fan_render.png"
-if img_path.exists():
-    st.image(str(img_path), caption="Fan impeller — 5-blade design (rendered from CAD model)", width=350)
+# ---- Two fan images, side by side ----
+img_path_1 = Path(__file__).parent / "fan_render.png"
+img_path_2 = Path(__file__).parent / "fan_render_2.png"
+
+img_col1, img_col2 = st.columns(2)
+with img_col1:
+    if img_path_1.exists():
+        st.image(str(img_path_1), caption="Fan design — view 1", use_container_width=True)
+with img_col2:
+    if img_path_2.exists():
+        st.image(str(img_path_2), caption="Fan design — view 2", use_container_width=True)
+
+st.subheader("🎯 Project Objective")
+st.write(
+    "This project follows a **design → predict → verify** workflow:\n\n"
+    "1. **Design** — Modeled a 5-blade axial exhaust fan in CAD.\n"
+    "2. **Predict** — Calculated the expected airflow theoretically, using "
+    "basic fluid mechanics formulas (this app).\n"
+    "3. **Verify** — Ran a full CFD simulation (COMSOL Multiphysics) on the "
+    "actual CAD geometry to check whether the prediction holds up.\n\n"
+    "The goal was to show that the hand-calculated prediction and the CFD "
+    "result agree with each other, demonstrating both design and analytical "
+    "engineering skills — not just building a fan or running a simulation."
+)
 
 st.header("Geometry (extracted from CAD)")
 
@@ -135,7 +151,7 @@ st.info(
     "the actual blade geometry, turbulence, and boundary layer effects."
 )
 
-# ---- CFD Contour Images (optional) ----
+# ---- CFD Contour Images ----
 velocity_img = Path(__file__).parent / "velocity_contour.png"
 pressure_img = Path(__file__).parent / "pressure_contour.png"
 
@@ -152,4 +168,67 @@ else:
     st.caption(
         "Add `velocity_contour.png` and `pressure_contour.png` next to this app "
         "file (same GitHub folder) to display the CFD result visuals here."
+    )
+
+with st.expander("🔍 How to read the velocity and pressure contours"):
+    st.markdown(
+        "**Velocity — why it's high at the blade tip and low at the hub:**\n"
+        "Since v = ω × r, velocity scales directly with radius. The blade tip "
+        "(largest r) moves fastest, so it shows the highest velocity (red/yellow). "
+        "Near the hub (r ≈ 0) and far outside the domain, velocity drops close to zero.\n\n"
+        "**Pressure — why one side of each blade is high and the other is low:**\n"
+        "Each blade has a pressure side (the face pushing the air — shows higher "
+        "pressure) and a suction side (the trailing face pulling air along — shows "
+        "lower pressure). This pressure difference across the blade is exactly what "
+        "generates thrust/airflow, the same principle as lift on an airplane wing.\n\n"
+        "**Why the overall inlet/outlet pressure looks like ~0 Pa:**\n"
+        "Both the Inlet and Outlet boundaries were set to a fixed Pressure = 0 Pa "
+        "condition (open, atmospheric boundaries) — this was a modeling choice, not "
+        "a measured result. So the *domain-average* pressure difference isn't a "
+        "meaningful output here; the *local* pressure difference across each blade "
+        "(seen in the contour plot) is what reflects the fan's actual aerodynamic loading."
+    )
+
+# ---- Fan Efficiency (optional) ----
+st.header("⚙️ Fan Efficiency (Optional)")
+st.write(
+    "Because the inlet/outlet were modeled as fixed 0 Pa boundaries, static "
+    "pressure rise can't be used to estimate efficiency here. Instead, efficiency "
+    "is estimated by comparing the **kinetic energy given to the air** against the "
+    "**shaft power** needed to spin the fan (from the torque on the rotating wall)."
+)
+
+eff_col1, eff_col2 = st.columns(2)
+
+with eff_col1:
+    torque = st.number_input(
+        "Torque on fan wall from CFD (N·m)",
+        value=0.0, format="%.6f",
+        help="Get this from COMSOL: Derived Values → Surface Integration → Moment, "
+             "evaluated on the rotating wall (fan surface)."
+    )
+
+if torque > 0:
+    exit_velocity = cfd_avg_flow / frontal_area
+    shaft_power = torque * omega
+    aero_power = 0.5 * air_density * cfd_avg_flow * exit_velocity ** 2
+    fan_efficiency = (aero_power / shaft_power) * 100 if shaft_power > 0 else 0
+
+    with eff_col2:
+        st.metric("Shaft Power", f"{shaft_power:.4f} W")
+        st.metric("Aerodynamic Power", f"{aero_power:.4f} W")
+        st.metric("Estimated Efficiency", f"{fan_efficiency:.1f}%")
+
+    with st.expander("See efficiency calculation details"):
+        st.latex(r"P_{shaft} = \tau \cdot \omega")
+        st.write(f"P_shaft = {torque:.6f} × {omega:.2f} = {shaft_power:.4f} W")
+        st.latex(r"v_{exit} = \frac{Q}{A}")
+        st.write(f"v_exit = {cfd_avg_flow:.5f} / {frontal_area:.5f} = {exit_velocity:.3f} m/s")
+        st.latex(r"P_{aero} = \tfrac{1}{2} \cdot \rho \cdot Q \cdot v_{exit}^2")
+        st.write(f"P_aero = 0.5 × {air_density} × {cfd_avg_flow:.5f} × {exit_velocity:.3f}² = {aero_power:.4f} W")
+        st.latex(r"\eta = \frac{P_{aero}}{P_{shaft}} \times 100")
+else:
+    st.caption(
+        "Enter the torque value from COMSOL above to see the efficiency estimate. "
+        "This step is optional — the project is already complete without it."
     )
